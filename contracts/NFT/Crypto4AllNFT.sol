@@ -3,14 +3,14 @@
 pragma solidity ^0.8.0;
 
 import "../AccessControl/Crypto4AllAccessControls.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-// import "./NFT.sol";
+// import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "./NFT.sol";
 
 /**
  * @title Crypto4All  NFT
  * @dev Issues ERC-721 tokens 
  */
-contract Crypto4AllNFT is ERC721URIStorage {
+contract Crypto4AllNFT is ERC721 {
 
     // @notice event emitted upon construction of this contract, used to bootstrap external indexers
     event Crypto4AllNFTContractDeployed();
@@ -68,6 +68,37 @@ contract Crypto4AllNFT is ERC721URIStorage {
     }
 
 
+    /**
+     @notice Mints a Crypto4AllNFT AND when minting to a contract checks if the beneficiary is a 721 compatible
+     @dev Only senders with either the admin or mintor role can invoke this method
+     @param _beneficiary Recipient of the NFT
+     @param _count the Number of token uri
+     @param _tokenUris URI for the token being minted
+     @param _postCreator NFT Creator - will be required for issuing royalties from secondary sales
+     */
+    function mintMany(address _beneficiary, uint256 _count, string[] calldata _tokenUris, address _postCreator) external {
+        require(
+            accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
+            "Crypto4AllNFT.mint: Sender must have the admin or minter role"
+        );
+        require(_count == _tokenUris.length);
+
+        uint256 fromTokenId = tokenIdPointer + 1;
+        uint256 toTokenId = tokenIdPointer + _count +1;
+
+        // Mint token and set token URI
+        _safeMintMany(_beneficiary, fromTokenId, toTokenId);
+
+        for(uint256 i = 0; i < _count; i ++) {
+            // Valid args
+            uint256 tokenId = tokenIdPointer + i + 1;
+            _assertMintingParamsValid(_tokenUris[i], _postCreator);
+            _setTokenURI(tokenId, _tokenUris[i]);
+
+            postCreators[tokenId] = _postCreator;
+        }
+        tokenIdPointer = tokenIdPointer + _count;
+    }
     //////////
     // Admin /
     //////////
