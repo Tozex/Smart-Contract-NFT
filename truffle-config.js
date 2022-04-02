@@ -65,6 +65,15 @@ module.exports = {
       skipDryRun: true,
       networkCheckTimeout:999999
     },
+    mumbai: {
+      provider: () => new HDWalletProvider(process.env.PRIVATEKEY, `wss://polygon-mumbai.g.alchemy.com/v2/LcBqud-AYtt-2uHZ8jNniZZFBJ2bPyZt`),
+      network_id: 80001,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      networkCheckTimeout: 999999,
+      skipDryRun: false
+    },
+
     // Useful for private networks
     // private: {
     // provider: () => new HDWalletProvider(mnemonic, `https://network.io`),

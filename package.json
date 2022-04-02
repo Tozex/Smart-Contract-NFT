@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/NonFiggybles/NonFiggybles-SmartContracts#readme",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.1.0",
+    "@openzeppelin/contracts": "^4.5.0",
     "@openzeppelin/test-helpers": "^0.5.10",
     "chai": "^4.3.3",
     "dotenv": "^8.2.0",

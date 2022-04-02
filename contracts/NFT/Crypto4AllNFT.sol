@@ -2,27 +2,37 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "../AccessControl/Crypto4AllAccessControls.sol";
-// import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "./NFT.sol";
 
 /**
  * @title Crypto4All  NFT
  * @dev Issues ERC-721 tokens 
  */
-contract Crypto4AllNFT is ERC721 {
+contract Crypto4AllNFT is IERC2981, ERC721 {
+    using SafeMath for uint256;
 
-    // @notice event emitted upon construction of this contract, used to bootstrap external indexers
+    /// @notice event emitted upon construction of this contract, used to bootstrap external indexers
     event Crypto4AllNFTContractDeployed();
 
-    // @notice event emitted when token URI is updated
+    /// @notice event emitted when royalty percent is updated
+    event SetRoyaltyPercent(
+        uint256 royaltyPercent
+    );
+
+    /// @notice event emitted when token URI is updated
     event Crypto4AllTokenUriUpdate(
         uint256 indexed _tokenId,
         string _tokenUri
-    );
+    );    
 
     /// @dev Required to govern who can call certain functions
     Crypto4AllAccessControls public accessControls;
+
+    /// @dev the percent of royalty
+    uint256 public royaltyPercent;
 
     /// @dev current max tokenId
     uint256 public tokenIdPointer;
@@ -33,9 +43,17 @@ contract Crypto4AllNFT is ERC721 {
     /**
      @notice Constructor
      @param _accessControls Address of the Crypto4AllNFT access control contract
+     @param _name Name of the NFT
+     @param _symbol Symbol of nft
      */
-    constructor(Crypto4AllAccessControls _accessControls) ERC721("Crypto4All NFT", "CFAN") {
+    constructor(
+        Crypto4AllAccessControls _accessControls,
+        string memory _name,
+        string memory _symbol,
+        uint256 _royaltyPercent
+    ) ERC721(_name, _symbol) {
         accessControls = _accessControls;
+        royaltyPercent = _royaltyPercent;
         emit Crypto4AllNFTContractDeployed();
     }
 
@@ -73,18 +91,17 @@ contract Crypto4AllNFT is ERC721 {
      @dev Only senders with either the admin or mintor role can invoke this method
      @param _beneficiary Recipient of the NFT
      @param _count the Number of token uri
-     @param _tokenUris URI for the token being minted
+     @param _tokenUri URI for the token being minted
      @param _postCreator NFT Creator - will be required for issuing royalties from secondary sales
      */
-    function mintMany(address _beneficiary, uint256 _count, string[] calldata _tokenUris, address _postCreator) external {
+    function mintMany(address _beneficiary, uint256 _count, string calldata _tokenUri, address _postCreator) external {
         require(
             accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
             "Crypto4AllNFT.mint: Sender must have the admin or minter role"
         );
-        require(_count == _tokenUris.length);
 
         uint256 fromTokenId = tokenIdPointer + 1;
-        uint256 toTokenId = tokenIdPointer + _count +1;
+        uint256 toTokenId = tokenIdPointer + _count;
 
         // Mint token and set token URI
         _safeMintMany(_beneficiary, fromTokenId, toTokenId);
@@ -92,8 +109,8 @@ contract Crypto4AllNFT is ERC721 {
         for(uint256 i = 0; i < _count; i ++) {
             // Valid args
             uint256 tokenId = tokenIdPointer + i + 1;
-            _assertMintingParamsValid(_tokenUris[i], _postCreator);
-            _setTokenURI(tokenId, _tokenUris[i]);
+            _assertMintingParamsValid(_tokenUri, _postCreator);
+            _setTokenURI(tokenId, _tokenUri);
 
             postCreators[tokenId] = _postCreator;
         }
@@ -102,6 +119,19 @@ contract Crypto4AllNFT is ERC721 {
     //////////
     // Admin /
     //////////
+
+    /**
+     @notice Updates the percent of royalty
+     @dev Only admin
+     @param _royaltyPercent The ID of the token being updated
+     */
+    function setRoyaltyPercent(uint256 _royaltyPercent) external {
+        require(
+            accessControls.hasAdminRole(_msgSender()),"Crypto4AllNFT.setRoyaltyPercent: Sender must have the admin role"
+        );
+        royaltyPercent = _royaltyPercent;
+        emit SetRoyaltyPercent(_royaltyPercent);
+    }
 
     /**
      @notice Updates the token URI of a given token
@@ -129,6 +159,15 @@ contract Crypto4AllNFT is ERC721 {
     /////////////////
     // View Methods /
     /////////////////
+
+    /**
+     * @dev See {IERC2981-royaltyInfo}.
+     */
+
+    function royaltyInfo(uint256 tokenId, uint256 salePrice) external view override(IERC2981) returns (address receiver, uint256 royaltyAmount) {
+        receiver = postCreators[tokenId];
+        royaltyAmount = salePrice.mul(royaltyPercent).div(10000);
+    }
 
     /**
      @notice View method for checking whether a token has been minted

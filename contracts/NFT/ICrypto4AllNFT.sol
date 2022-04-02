@@ -9,6 +9,8 @@ interface ICrypto4AllNFT is IERC721 {
     function setPrimarySalePrice(uint256 _tokenId, uint256 _salePrice) external;
     function postCreators(uint256 _tokenId) external view returns (address);
     function exists(uint256 _tokenId) external view returns (bool);
+    function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256);
     function mint(address _beneficiary, string calldata _tokenUri, address _designer) external returns (uint256);
     function burn(uint256 _tokenId) external;
+    
 }
