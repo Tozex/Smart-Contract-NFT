@@ -5,13 +5,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Consecutive.sol";
 import "../AccessControl/Crypto4AllAccessControls.sol";
+import "../Abstract/ERC5679.sol";
 
 
 /**
  * @title Crypto4All  NFT
  * @dev Issues ERC-721 tokens 
  */
-contract Crypto4AllNFT is ERC721Consecutive {
+contract Crypto4AllNFT is ERC5679Ext721, ERC721Consecutive {
     using SafeMath for uint256;
 
     /// @notice event emitted upon construction of this contract, used to bootstrap external indexers
@@ -78,23 +79,43 @@ contract Crypto4AllNFT is ERC721Consecutive {
     /**
      * @notice Mints a Crypto4AllNFT AND when minting to a contract checks if the beneficiary is a 721 compatible
      * @dev Only senders with either the admin or mintor role can invoke this method
-     * @param _beneficiary Recipient of the NFT
-     * @return uint256 The token ID of the token that was minted
+     * @param _to Recipient of the NFT
+     * @param _id Token id of NFT
      */
-    function mint(address _beneficiary) external returns (uint256) {
+    function safeMint(
+        address _to,
+        uint256 _id,
+        bytes calldata // _data (unused)
+    ) external override {
         require(
             accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
             "Crypto4AllNFT.mint: Sender must have the admin or minter role"
         );
 
-        uint256 tokenId = totalSupply;
+        require(_id == totalSupply, "Invalid token id");
 
         // Mint token and set token URI
-        _safeMint(_beneficiary, tokenId);
-
-        return tokenId;
+        _safeMint(_to, _id);
     }
 
+    /**
+     * @notice Burn a Crypto4AllNFT 
+     * @dev Only owner of nft can call this function
+     * @param _id Token id of NFT
+     */
+    function burn(
+        address, // _from, (unused)
+        uint256 _id,
+        bytes calldata // _data (unused)
+    ) external override {
+        require(
+            ownerOf(_id) == msg.sender, 
+            "Only nft owner can burn the nft"
+        );
+
+        // Burn token
+        _burn(_id); 
+    }
 
 
     //////////
@@ -141,4 +162,11 @@ contract Crypto4AllNFT is ERC721Consecutive {
     function isApproved(uint256 _tokenId, address _operator) public view returns (bool) {
         return isApprovedForAll(ownerOf(_tokenId), _operator) || getApproved(_tokenId) == _operator;
     }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC5679Ext721, ERC721)
+        returns (bool)
+    {}
 }
