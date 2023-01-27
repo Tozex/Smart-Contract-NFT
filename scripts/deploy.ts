@@ -1,18 +1,22 @@
-import { ethers } from "hardhat";
+import { access } from "fs";
+import { ethers, upgrades } from "hardhat";
 
 async function main() {
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-  const unlockTime = currentTimestampInSeconds + ONE_YEAR_IN_SECS;
+  const Crypto4AllAccessControls = await ethers.getContractFactory("Crypto4AllAccessControls");
+  const accessControls = await Crypto4AllAccessControls.deploy();
+  await accessControls.deployed();
 
-  const lockedAmount = ethers.utils.parseEther("1");
+  // Deploy Crypto4AllNFT
+  const Crypto4AllNFT = await ethers.getContractFactory("Crypto4AllNFT");
+  const nft = await upgrades.deployProxy(Crypto4AllNFT, [
+    accessControls.address,
+    "Name",
+    "Symbol",
+    750
+  ]);
 
-  const Lock = await ethers.getContractFactory("Lock");
-  const lock = await Lock.deploy(unlockTime, { value: lockedAmount });
-
-  await lock.deployed();
-
-  console.log(`Lock with 1 ETH and unlock timestamp ${unlockTime} deployed to ${lock.address}`);
+  await nft.deployed();
+  console.log('Crypto4All nft deployed to', nft.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
