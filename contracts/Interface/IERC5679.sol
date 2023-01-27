@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 
 pragma solidity ^0.8.0;
 
@@ -10,7 +10,7 @@ interface IERC5679Ext20 {
 }
 
 interface IERC5679Ext721 {
-   function safeMint(address _to, uint256 _id, bytes calldata _data) external;
+   function safeMint(address _to, uint256 _id, bytes calldata _data) external payable;
    function burn(address _from, uint256 _id, bytes calldata _data) external;
 }
 

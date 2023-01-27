@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Consecutive.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
+import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
 import "../AccessControl/Crypto4AllAccessControls.sol";
 import "../Abstract/ERC5679.sol";
 
@@ -12,8 +13,8 @@ import "../Abstract/ERC5679.sol";
  * @title Crypto4All  NFT
  * @dev Issues ERC-721 tokens 
  */
-contract Crypto4AllNFT is ERC5679Ext721, ERC721Consecutive {
-    using SafeMath for uint256;
+contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable {
+    using SafeMathUpgradeable for uint256;
 
     /// @notice event emitted upon construction of this contract, used to bootstrap external indexers
     event Crypto4AllNFTContractDeployed();
@@ -35,36 +36,30 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721Consecutive {
     /// @dev the percent of royalty
     uint256 public royaltyPercent;
 
-    /// @dev current max tokenId
-    uint256 public totalSupply;
-
     /// @dev base uri
     string private _baseURIString;
 
     /**
      * @notice Constructor
-     * @param _accessControls Address of the Crypto4AllNFT access control contract
-     * @param _name Name of the NFT
-     * @param _symbol Symbol of nft
      */
-    constructor(
+    constructor() {
+        _disableInitializers();        
+        emit Crypto4AllNFTContractDeployed();
+    }
+
+    function initialize(
         Crypto4AllAccessControls _accessControls,
         string memory _name,
         string memory _symbol,
         string memory uri_,
-        address _recipient,
-        uint96 _totalSupply,
         uint256 _royaltyPercent
-    ) ERC721(_name, _symbol) {
+    ) initializerERC721A initializer public {
+        __ERC721A_init(_name, _symbol);
+        __Ownable_init();
+
         accessControls = _accessControls;
         royaltyPercent = _royaltyPercent;
         _baseURIString = uri_;
-
-        totalSupply = _totalSupply;
-
-        _mintConsecutive(_recipient, _totalSupply);
-        
-        emit Crypto4AllNFTContractDeployed();
     }
 
     /**
@@ -80,22 +75,36 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721Consecutive {
      * @notice Mints a Crypto4AllNFT AND when minting to a contract checks if the beneficiary is a 721 compatible
      * @dev Only senders with either the admin or mintor role can invoke this method
      * @param _to Recipient of the NFT
-     * @param _id Token id of NFT
+     * @param _quantity Quantity of the NFT
      */
-    function safeMint(
+    function safeMintMany(
         address _to,
-        uint256 _id,
-        bytes calldata // _data (unused)
-    ) external override {
+        uint256 _quantity
+    ) external payable {
         require(
             accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
             "Crypto4AllNFT.mint: Sender must have the admin or minter role"
         );
 
-        require(_id == totalSupply, "Invalid token id");
+        _mint(_to, _quantity);
+    }
 
-        // Mint token and set token URI
-        _safeMint(_to, _id);
+    /**
+     * @notice Mints a Crypto4AllNFT AND when minting to a contract checks if the beneficiary is a 721 compatible
+     * @dev Only senders with either the admin or mintor role can invoke this method
+     * @param _to Recipient of the NFT
+     */
+    function safeMint(
+        address _to,
+        uint256, // _id (unused)
+        bytes calldata // _data (unused)
+    ) external payable override {
+        require(
+            accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
+            "Crypto4AllNFT.mint: Sender must have the admin or minter role"
+        );
+
+        _mint(_to, 1);
     }
 
     /**
@@ -166,7 +175,7 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721Consecutive {
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC5679Ext721, ERC721)
+        override(ERC5679Ext721, ERC721AUpgradeable)
         returns (bool)
     {}
 }
