@@ -4,16 +4,17 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
-import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/extensions/ERC1155SupplyUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol"; 
 import "../AccessControl/Crypto4AllAccessControls.sol";
 import "../Abstract/ERC5679.sol";
 
 
 /**
  * @title Crypto4All  NFT
- * @dev Issues ERC-721 tokens 
+ * @dev Issues ERC-1155 tokens 
  */
-contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable {
+contract Crypto4AllNFT1155 is OwnableUpgradeable, ERC5679Ext1155, ERC1155SupplyUpgradeable {
     using SafeMathUpgradeable for uint256;
 
     /// @notice event emitted upon construction of this contract, used to bootstrap external indexers
@@ -33,8 +34,14 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
     /// @dev Required to govern who can call certain functions
     Crypto4AllAccessControls public accessControls;
 
+    bool public isCollectible;
+
     /// @dev the percent of royalty
     uint256 public royaltyPercent;
+
+    string public name;
+
+    string public symbol;
 
     /// @dev base uri
     string private _baseURIString;
@@ -52,14 +59,20 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
         string memory _name,
         string memory _symbol,
         string memory uri_,
-        uint256 _royaltyPercent
-    ) initializerERC721A initializer public {
-        __ERC721A_init(_name, _symbol);
+        uint256 _royaltyPercent,
+        bool _isCollectible
+    ) initializer public {
+        __ERC1155_init(uri_);
         __Ownable_init();
+
+        name = _name;
+        symbol = _symbol;
 
         accessControls = _accessControls;
         royaltyPercent = _royaltyPercent;
         _baseURIString = uri_;
+
+        isCollectible = _isCollectible;
     }
 
     /**
@@ -67,63 +80,100 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
      * token will be the concatenation of the `baseURI` and the `tokenId`. Empty
      * by default, it can be overridden in child contracts.
      */
-    function _baseURI() internal view override returns (string memory) {
-        return _baseURIString;
+     function uri(uint256 _id) public view virtual override(ERC1155Upgradeable) returns (string memory) {
+        return bytes(_baseURIString).length > 0 ? string(abi.encodePacked(_baseURIString, Strings.toString(_id))) : "";
     }
 
     /**
-     * @notice Mints a Crypto4AllNFT AND when minting to a contract checks if the beneficiary is a 721 compatible
-     * @dev Only senders with either the admin or mintor role can invoke this method
-     * @param _to Recipient of the NFT
-     * @param _quantity Quantity of the NFT
-     */
-    function safeMintMany(
-        address _to,
-        uint256 _quantity
-    ) external payable {
-        require(
-            accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
-            "Crypto4AllNFT.mint: Sender must have the admin or minter role"
-        );
-
-        _mint(_to, _quantity);
-    }
-
-    /**
-     * @notice Mints a Crypto4AllNFT AND when minting to a contract checks if the beneficiary is a 721 compatible
-     * @dev Only senders with either the admin or mintor role can invoke this method
-     * @param _to Recipient of the NFT
+     * @notice Mint nft
+     * @dev Only admin
+     * @param _to The recipient of token being minted
+     * @param _id The ID of the token being minted
+     * @param _amount The amount of the token id being minted
+     * @param _data byte data
      */
     function safeMint(
         address _to,
-        uint256, // _id (unused)
-        bytes calldata // _data (unused)
-    ) external payable override {
+        uint256 _id,
+        uint256 _amount,
+        bytes calldata _data
+    ) external override {
         require(
             accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
             "Crypto4AllNFT.mint: Sender must have the admin or minter role"
         );
 
-        _mint(_to, 1);
+        require(!isCollectible || _amount + totalSupply(_id) == 1, "Max supply exceed for collectible");
+
+        _mint(_to, _id, _amount, _data);
     }
 
     /**
-     * @notice Burn a Crypto4AllNFT 
-     * @dev Only owner of nft can call this function
-     * @param _id Token id of NFT
+     * @notice Batch mint nft
+     * @dev Only admin
+     * @param to The recipient of token being minted
+     * @param ids The IDs of the token being minted
+     * @param amounts The amounts of the token id being minted
+     * @param data byte data
+     */
+    function safeMintBatch(
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external override {
+        require(
+            accessControls.hasAdminRole(_msgSender()) || accessControls.hasMinterRole(_msgSender()),
+            "Crypto4AllNFT.mint: Sender must have the admin or minter role"
+        );
+
+        for(uint256 i = 0; i < ids.length; i ++){
+            require(!isCollectible || amounts[i] + totalSupply(ids[i]) == 1, "Max supply exceed for collectible");
+        }
+        
+        _mintBatch(to, ids, amounts, data);
+    }
+
+    /**
+     * @notice Burn nft
+     * @dev Only approved operator or owner of nft
+     * @param _from The owner of token being burned
+     * @param _id The ID of the token being burned
+     * @param _amount The amount of the token id being burned
      */
     function burn(
-        address, // _from, (unused)
+        address _from,
         uint256 _id,
+        uint256 _amount,
+        bytes[] calldata // _data (unused)
+    ) external override {
+        require(
+            _from == _msgSender() || isApprovedForAll(_from, _msgSender()),
+            "ERC1155: caller is not token owner or approved"
+        );
+
+        _burn(_from, _id, _amount);
+    }
+
+    /**
+     * @notice Batch burn nft
+     * @dev Only approved operator or owner of nft
+     * @param _from The owner of token being burned
+     * @param ids The IDs of the token being burned
+     * @param amounts The amounts of the token id being burned
+     */
+    function burnBatch(
+        address _from,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
         bytes calldata // _data (unused)
     ) external override {
         require(
-            ownerOf(_id) == msg.sender, 
-            "Only nft owner can burn the nft"
+            _from == _msgSender() || isApprovedForAll(_from, _msgSender()),
+            "ERC1155: caller is not token owner or approved"
         );
 
-        // Burn token
-        _burn(_id); 
+        _burnBatch(_from, ids, amounts);
     }
 
 
@@ -157,25 +207,10 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
     // View Methods /
     /////////////////
 
-    /**
-     * @notice View method for checking whether a token has been minted
-     * @param _tokenId ID of the token being checked
-     */
-    function exists(uint256 _tokenId) external view returns (bool) {
-        return _exists(_tokenId);
-    }
-
-    /**
-     * @dev checks the given token ID is approved either for all or the single token ID
-     */
-    function isApproved(uint256 _tokenId, address _operator) public view returns (bool) {
-        return isApprovedForAll(ownerOf(_tokenId), _operator) || getApproved(_tokenId) == _operator;
-    }
-
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC5679Ext721, ERC721AUpgradeable)
+        override(ERC5679Ext1155, ERC1155Upgradeable)
         returns (bool)
     {}
 }
