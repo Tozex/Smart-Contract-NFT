@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../NFT/ICrypto4AllNFT.sol";
 
 // SPDX-License-Identifier: GPL-3.0
@@ -16,6 +17,12 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   using SafeMath for uint256;
   using Address for address payable;
 
+  enum SalesStatus {
+    Pause,
+    Allowlist,
+    Public
+  }
+    
   event NFTSaleContractDeployed();
 
   event BuyNft(
@@ -35,11 +42,17 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   );
 
   event UpdateIsSale(
-    bool isSale
+    SalesStatus salesStatus
   );
+
+  // Status of sale status.
+  SalesStatus public salesStatus;
 
   /// @notice Crypto4All NFT - the only NFT that can be offered in this contract
   ICrypto4AllNFT public crypto4AllNFT;
+
+  /// @notice Flags for allowlist minting.
+  mapping(address => bool) public allowlistMinted;
 
   // Address where funds are collected
   address payable public admin;
@@ -47,25 +60,29 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   // Minimum purchase size of incoming ether amount
   uint256 public nftPrice = 0.0001 ether;
 
-  // Status of sale status.
-  bool isSale;
-
+  /// @dev Hash of merkle tree root, which is used for allowlist proof.
+  bytes32 private _merkleRoot;
+  
   /***
    * @param _accessControls accesscontrols contract
    * @param _crypto4AllNFT nft contract
    * @param _admin The admin wallet
+   * @param merkleRoot_ The hash of root of the merkle tree for allowlist mint.
    */
   constructor(
     ICrypto4AllNFT _crypto4AllNFT,
-    address payable _admin
+    address payable _admin,
+    bytes32 merkleRoot_
   ) {
     require(_admin != address(0) && address(_crypto4AllNFT) != address(0));
+
     admin = _admin;
     crypto4AllNFT = _crypto4AllNFT;
-    isSale = true;
+    salesStatus = SalesStatus.Pause;
+
+    _merkleRoot = merkleRoot_;
     emit NFTSaleContractDeployed();
   }
-
 
   /**
     * @dev called by the owner to pause, triggers stopped state
@@ -84,19 +101,32 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   // -----------------------------------------
   // NFTSale external interface
   // -----------------------------------------
-  receive() external payable {
-    buyNft();
-  }
+  // receive() external payable {
+  //   require(salesStatus == SalesStatus.Public, "NFTSale.buyNft: sale not enabled");
+  //   buyNft();
+  // }
 
 
   /**
    * @dev low level token purchase ***DO NOT OVERRIDE***
    */
-  function buyNft() internal whenNotPaused nonReentrant {
-    require(isSale, "NFTSale.buyNft: sale not enabled");
+  function buyNft(bytes32[] calldata merkleProof) external payable whenNotPaused nonReentrant {
+    require(salesStatus != SalesStatus.Pause, "NFTSale.buyNft: sale not enabled");
     require(msg.value >= nftPrice, "NFTSale.buyNft: amount not same");
     require(crypto4AllNFT.balanceOf(address(this)) > 0, "nothing left");
 
+    if (salesStatus == SalesStatus.Allowlist) {
+      require(allowlistMinted[msg.sender] == false, "You've already minted");
+
+      // Verify Merkle Tree
+      bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+      require(
+          MerkleProof.verify(merkleProof, _merkleRoot, leaf),
+          "Not allowlisted"
+      );
+
+      allowlistMinted[msg.sender] == true;
+    }
 
     (bool transferSuccess,) = admin.call{value : msg.value}("");
     require(transferSuccess, "NFTSale.buyNft: Failed to send deposit ether");
@@ -121,7 +151,7 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   /**
     @notice Update the nftPrice
     @dev Only admin
-    @param _nftPrice New price
+    @param _nftPrice New pricex
     */
   function updateNftPrice(uint256 _nftPrice) external onlyOwner {
       nftPrice = _nftPrice;
@@ -131,11 +161,11 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   /**
     @notice Update the nftPrice
     @dev Only admin
-    @param _isSale New price
+    @param _salesStatus New price
     */
-  function updateIsSale(bool _isSale) external onlyOwner {
-      isSale = _isSale;
-      emit UpdateIsSale(_isSale);
+  function updateIsSale(SalesStatus _salesStatus) external onlyOwner {
+      salesStatus = _salesStatus;
+      emit UpdateIsSale(_salesStatus);
   }
 
   function onERC721Received(
