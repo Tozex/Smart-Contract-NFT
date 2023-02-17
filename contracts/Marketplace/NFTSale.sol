@@ -45,6 +45,10 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     SalesStatus salesStatus
   );
 
+  event UpdateMerkleRoot(
+    bytes32 merkleroot
+  );
+
   // Status of sale status.
   SalesStatus public salesStatus;
 
@@ -97,15 +101,6 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   function unpause() public onlyOwner whenPaused {
       _unpause();
   }
-
-  // -----------------------------------------
-  // NFTSale external interface
-  // -----------------------------------------
-  // receive() external payable {
-  //   require(salesStatus == SalesStatus.Public, "NFTSale.buyNft: sale not enabled");
-  //   buyNft();
-  // }
-
 
   /**
    * @dev low level token purchase ***DO NOT OVERRIDE***
@@ -166,6 +161,16 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   function updateIsSale(SalesStatus _salesStatus) external onlyOwner {
       salesStatus = _salesStatus;
       emit UpdateIsSale(_salesStatus);
+  }
+
+  /**
+    @notice Update the Merkle Root
+    @dev Only admin
+    @param merkleRoot_ New Merkle Root
+    */
+  function updateMerkleRoot(bytes32 merkleRoot_) external onlyOwner {
+      _merkleRoot = merkleRoot_;
+      emit UpdateMerkleRoot(merkleRoot_);
   }
 
   function onERC721Received(
