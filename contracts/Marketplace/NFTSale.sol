@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "erc721a-upgradeable/contracts/extensions/IERC721AQueryableUpgradeable.sol";
 import "../NFT/ICrypto4AllNFT.sol";
 
 // SPDX-License-Identifier: GPL-3.0
@@ -53,7 +54,7 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
   SalesStatus public salesStatus;
 
   /// @notice Crypto4All NFT - the only NFT that can be offered in this contract
-  ICrypto4AllNFT public crypto4AllNFT;
+  IERC721AQueryableUpgradeable public crypto4AllNFT;
 
   /// @notice Flags for allowlist minting.
   mapping(address => bool) public allowlistMinted;
@@ -74,7 +75,7 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
    * @param merkleRoot_ The hash of root of the merkle tree for allowlist mint.
    */
   constructor(
-    ICrypto4AllNFT _crypto4AllNFT,
+    IERC721AQueryableUpgradeable _crypto4AllNFT,
     address payable _admin,
     bytes32 merkleRoot_
   ) {
@@ -120,13 +121,13 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
           "Not allowlisted"
       );
 
-      allowlistMinted[msg.sender] == true;
+      allowlistMinted[msg.sender] = true;
     }
 
     (bool transferSuccess,) = admin.call{value : msg.value}("");
     require(transferSuccess, "NFTSale.buyNft: Failed to send deposit ether");
 
-    uint256 tokenId = crypto4AllNFT.tokenOfOwnerByIndex(address(this), 0);
+    uint256 tokenId = crypto4AllNFT.tokensOfOwner(address(this))[0];
     crypto4AllNFT.safeTransferFrom(address(this), msg.sender, tokenId);
     
     emit BuyNft(msg.sender, msg.value, tokenId);

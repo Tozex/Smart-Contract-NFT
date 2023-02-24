@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import '@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol';
-import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
+import "erc721a-upgradeable/contracts/extensions/ERC721AQueryableUpgradeable.sol";
 import "../AccessControl/Crypto4AllAccessControls.sol";
 import "../Abstract/ERC5679.sol";
 
@@ -13,7 +13,7 @@ import "../Abstract/ERC5679.sol";
  * @title Crypto4All  NFT
  * @dev Issues ERC-721 tokens 
  */
-contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable {
+contract Crypto4AllNFT is ERC5679Ext721, ERC721AQueryableUpgradeable, OwnableUpgradeable {
     using SafeMathUpgradeable for uint256;
 
     /// @notice event emitted upon construction of this contract, used to bootstrap external indexers
@@ -39,13 +39,6 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
     /// @dev base uri
     string private _baseURIString;
 
-    /**
-     * @notice Constructor
-     */
-    constructor() {
-        _disableInitializers();        
-        emit Crypto4AllNFTContractDeployed();
-    }
 
     function initialize(
         Crypto4AllAccessControls _accessControls,
@@ -55,6 +48,7 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
         uint256 _royaltyPercent
     ) initializerERC721A initializer public {
         __ERC721A_init(_name, _symbol);
+        __ERC721AQueryable_init();
         __Ownable_init();
 
         accessControls = _accessControls;
@@ -175,7 +169,7 @@ contract Crypto4AllNFT is ERC5679Ext721, ERC721AUpgradeable, OwnableUpgradeable 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC5679Ext721, ERC721AUpgradeable)
+        override(ERC5679Ext721, IERC721AUpgradeable, ERC721AUpgradeable)
         returns (bool)
     {}
 }

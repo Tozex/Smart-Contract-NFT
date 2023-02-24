@@ -39,6 +39,6 @@
     "@openzeppelin/test-helpers": "^0.5.15",
     "erc721a": "^4.2.3",
     "erc721a-upgradeable": "^4.2.3",
-    "merkletreejs": "^0.2.31"
+    "merkletreejs": "^0.2.32"
   }
 }

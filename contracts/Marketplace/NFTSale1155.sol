@@ -13,7 +13,7 @@ import "../NFT/ICrypto4AllNFT1155.sol";
 // SPDX-License-Identifier: GPL-3.0
 
 
-contract NFTSale is  Ownable, Pausable, ReentrancyGuard, ERC1155HolderUpgradeable {
+contract NFTSale1155 is  Ownable, Pausable, ReentrancyGuard, ERC1155HolderUpgradeable {
 
   using SafeMath for uint256;
   using Address for address payable;
@@ -124,7 +124,7 @@ contract NFTSale is  Ownable, Pausable, ReentrancyGuard, ERC1155HolderUpgradeabl
           "Not allowlisted"
       );
 
-      allowlistMinted[msg.sender][saleTokenId] == true;
+      allowlistMinted[msg.sender][saleTokenId] = true;
     }
 
     (bool transferSuccess,) = admin.call{value : msg.value}("");

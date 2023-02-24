@@ -46,13 +46,6 @@ contract Crypto4AllNFT1155 is OwnableUpgradeable, ERC5679Ext1155, ERC1155SupplyU
     /// @dev base uri
     string private _baseURIString;
 
-    /**
-     * @notice Constructor
-     */
-    constructor() {
-        _disableInitializers();        
-        emit Crypto4AllNFTContractDeployed();
-    }
 
     function initialize(
         Crypto4AllAccessControls _accessControls,
@@ -145,7 +138,7 @@ contract Crypto4AllNFT1155 is OwnableUpgradeable, ERC5679Ext1155, ERC1155SupplyU
         address _from,
         uint256 _id,
         uint256 _amount,
-        bytes[] calldata // _data (unused)
+        bytes calldata // _data (unused)
     ) external override {
         require(
             _from == _msgSender() || isApprovedForAll(_from, _msgSender()),
@@ -166,7 +159,7 @@ contract Crypto4AllNFT1155 is OwnableUpgradeable, ERC5679Ext1155, ERC1155SupplyU
         address _from,
         uint256[] calldata ids,
         uint256[] calldata amounts,
-        bytes calldata // _data (unused)
+        bytes[] calldata // _data (unused)
     ) external override {
         require(
             _from == _msgSender() || isApprovedForAll(_from, _msgSender()),
