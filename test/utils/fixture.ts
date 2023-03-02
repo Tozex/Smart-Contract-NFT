@@ -5,7 +5,7 @@ import {
     Crypto4AllAccessControls, 
     Crypto4AllNFT, 
     Crypto4AllNFT1155, 
-    NFTAuction, 
+    NFTAuctionMock, 
     NFTMarketplace, 
     NFTMarketplace1155,
     NFTSale,
@@ -16,8 +16,8 @@ interface Crypto4AllFixture {
     accessControls: Crypto4AllAccessControls;
     nft: Crypto4AllNFT;
     nft1155: Crypto4AllNFT1155;
-    nftAuction: NFTAuction;
-    nftMarketplace: NFTMarketplace;
+    nftAuction: NFTAuctionMock;
+    nftMarketplace: NFTMarketplaceMock;
     nftMarketplace1155: NFTMarketplace1155;
     nftSale: NFTSale;
     nftSale1155: NFTSale1155;
@@ -52,7 +52,7 @@ export async function deployFixture(
     ]);
     await nft1155Instance.deployed();
 
-    const nftAuctionFactory = await ethers.getContractFactory("NFTAuction");
+    const nftAuctionFactory = await ethers.getContractFactory("NFTAuctionMock");
     const nftAuctionInstance = await nftAuctionFactory.connect(admin).deploy(
         accessControlsInstance.address,
         nftInstance.address,
@@ -60,7 +60,7 @@ export async function deployFixture(
     );
     await nftAuctionInstance.deployed();
     
-    const nftMarketplaceFactory = await ethers.getContractFactory("NFTMarketplace");
+    const nftMarketplaceFactory = await ethers.getContractFactory("NFTMarketplaceMock");
     const nftMarketplaceInstance = await nftMarketplaceFactory.connect(admin).deploy(
         accessControlsInstance.address,
         nftInstance.address,
@@ -97,8 +97,8 @@ export async function deployFixture(
         accessControls: accessControlsInstance as Crypto4AllAccessControls,
         nft: nftInstance as Crypto4AllNFT,
         nft1155: nft1155Instance as Crypto4AllNFT1155,
-        nftAuction: nftAuctionInstance as NFTAuction,
-        nftMarketplace: nftMarketplaceInstance as NFTMarketplace,
+        nftAuction: nftAuctionInstance as NFTAuctionMock,
+        nftMarketplace: nftMarketplaceInstance as NFTMarketplaceMock,
         nftMarketplace1155: nftMarketplace1155Instance as NFTMarketplace1155,
         nftSale: nftSaleInstance as NFTSale,
         nftSale1155: nftSale1155Instance as NFTSale1155
